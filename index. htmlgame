@@ -1,0 +1,70 @@
+
+<body>
+
+<h1>🏏 Cricket Game</h1>
+
+<div>
+Runs: <span id="runs">0</span> |
+Wickets: <span id="wickets">0</span>
+</div>
+
+<!-- ✅ ADD HERE -->
+<div id="commentary">Match started! 🎙️</div>
+
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+
+<script>
+
+function showComment(text){
+  document.getElementById("commentary").innerText = text;
+}
+if(ball.y>=bat.y && ball.x>bat.x && ball.x<bat.x+bat.width){
+   // old code
+}
+
+if(ball.y>=bat.y && ball.x>bat.x && ball.x<bat.x+bat.width){
+
+  let r = [1,2,4,6,0][Math.floor(Math.random()*5)];
+
+  if(r === 0){
+    wickets++;
+    showComment("OUT! 😱");
+  } else if(r === 6){
+    runs += 6;
+    showComment("SIX!! 🔥");
+  } else if(r === 4){
+    runs += 4;
+    showComment("FOUR! ⚡");
+  } else {
+    runs += r;
+    showComment("Nice shot 👍 " + r);
+  }
+
+  document.getElementById("runs").innerText = runs;
+  document.getElementById("wickets").innerText = wickets;
+
+  ball.y = 0;
+  ball.x = Math.random()*380;
+}
+
+ctx.clearRect(0,0,400,400);
+
+ctx.shadowColor = "#00ffcc";
+ctx.shadowBlur = 10;
+
+if(wickets>=3){
+   alert("Game Over");
+}
+
+if(wickets>=3){
+   showComment("🏆 Game Over! Score: " + runs);
+   playing = false;
+}
+
+
+
+
+
+
+
+
