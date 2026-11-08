@@ -1,0 +1,327 @@
+SUNAAD-JARVIS-5/
+  package.json
+  server.mjs
+  public/
+    index.html
+
+{
+  "name": "sunaad-jarvis-5",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^5.0.0"
+  }
+}
+
+import "dotenv/config";
+import express from "express";
+import OpenAI from "openai";
+
+const app = express();
+app.use(express.json({ limit: "1mb" }));
+app.use(express.static("public"));
+
+const apiKey = process.env.OPENAI_API_KEY;
+
+if (!apiKey) {
+  console.error("Missing OPENAI_API_KEY environment variable.");
+  process.exit(1);
+}
+
+const openai = new OpenAI({ apiKey });
+
+app.post("/api/chat", async (req, res) => {
+  try {
+    const messages = req.body.messages;
+    const useWeb = req.body.useWeb === true;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "Please enter a message." });
+    }
+
+    const safeMessages = messages.slice(-20).map((m) => {
+      if (!["user", "assistant"].includes(m.role)) {
+        throw new Error("Invalid message role.");
+      }
+      return {
+        role: m.role,
+        content: String(m.content || "").slice(0, 12000)
+      };
+    });
+
+    const response = await openai.responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-6-astra",
+      instructions:
+        "You are SUNAAD JARVIS, a helpful, friendly AI assistant. " +
+        "Answer clearly and accurately. Explain school topics simply when asked. " +
+        "Be honest when you do not know something. Never claim you performed " +
+        "actions on the user's device unless an approved tool actually did it.",
+      input: safeMessages,
+      ...(useWeb ? { tools: [{ type: "web_search" }] } : {})
+    });
+
+    res.json({ reply: response.output_text || "I couldn't create a reply." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "JARVIS could not connect. Check your server and API settings."
+    });
+  }
+});
+
+app.listen(3000, () => {
+  console.log("SUNAAD JARVIS is running at http://localhost:3000");
+});
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUNAAD JARVIS 5.0</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#030914;color:#e9faff;
+ font-family:Arial,sans-serif;min-height:100vh;
+ background-image:radial-gradient(ellipse at top,#10344d 0%,#030914 65%);
+}
+header{
+ padding:20px;text-align:center;border-bottom:1px solid #174c67;
+}
+h1{margin:0;color:#70eaff;letter-spacing:4px;font-size:25px}
+header p{color:#83aab9;font-size:12px;letter-spacing:2px}
+main{max-width:850px;margin:auto;padding:18px}
+.core-wrap{display:flex;justify-content:center;padding:22px}
+.core{
+ width:120px;height:120px;border-radius:50%;
+ border:2px solid #66eaff;
+ box-shadow:0 0 18px #00cfff, inset 0 0 24px #007baf;
+ display:grid;place-items:center;
+ animation:pulse 2s infinite;
+ background:radial-gradient(circle,#164c67,#061526 65%);
+}
+.core span{font-size:36px;color:#aaf5ff}
+@keyframes pulse{
+ 50%{box-shadow:0 0 38px #00d9ff,inset 0 0 35px #008ab9}
+}
+.status{text-align:center;color:#70eaff;font-size:12px}
+.chat{
+ height:45vh;min-height:260px;overflow:auto;
+ border:1px solid #174c67;border-radius:14px;
+ padding:14px;background:#061321;
+}
+.msg{
+ padding:12px 14px;margin:10px 0;border-radius:12px;
+ white-space:pre-wrap;line-height:1.5;overflow-wrap:anywhere;
+}
+.user{background:#103d55;margin-left:12%;border:1px solid #237b9b}
+.bot{background:#0b2031;margin-right:8%;border:1px solid #17516b}
+.who{font-size:10px;color:#70dff5;margin-bottom:5px}
+.controls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+input{
+ flex:1;min-width:160px;padding:14px;border-radius:10px;
+ background:#071a29;color:white;border:1px solid #26718d;
+ font-size:15px;
+}
+button{
+ padding:12px 15px;border-radius:10px;border:1px solid #38c8e8;
+ background:#0b354b;color:#b9f5ff;font-weight:bold;cursor:pointer;
+}
+button:disabled{opacity:.5}
+button:hover{background:#14536d}
+.options{display:flex;gap:15px;align-items:center;margin:12px 0;
+ color:#9fcbd8;font-size:13px;flex-wrap:wrap}
+.options input{flex:initial;min-width:0}
+.small{font-size:12px;color:#83aab9;text-align:center;margin:18px}
+</style>
+</head>
+<body>
+<header>
+ <h1>SUNAAD JARVIS</h1>
+ <p>PERSONAL ARTIFICIAL INTELLIGENCE · VERSION 5.0</p>
+</header>
+
+<main>
+ <div class="core-wrap">
+  <div class="core"><span>J</span></div>
+ </div>
+ <div class="status" id="status">SYSTEM READY</div>
+
+ <div class="options">
+  <label><input type="checkbox" id="web"> Enable web search</label>
+  <button id="voiceBtn" type="button">🎙 Speak</button>
+  <button id="stopBtn" type="button">🔇 Stop voice</button>
+  <button id="clearBtn" type="button">Clear chat</button>
+ </div>
+
+ <section class="chat" id="chat" aria-live="polite"></section>
+
+ <div class="controls">
+  <input id="prompt" placeholder="Ask JARVIS anything..." autocomplete="off">
+  <button id="send">SEND ➤</button>
+ </div>
+
+ <p class="small">
+  AI connection required. Voice features depend on your browser.
+  JARVIS cannot control every device function.
+ </p>
+</main>
+
+<script>
+const chat = document.getElementById("chat");
+const promptBox = document.getElementById("prompt");
+const statusBox = document.getElementById("status");
+const sendBtn = document.getElementById("send");
+
+let history = [];
+let busy = false;
+
+try {
+  history = JSON.parse(localStorage.getItem("jarvis-chat") || "[]");
+  if (!Array.isArray(history)) history = [];
+} catch {
+  history = [];
+}
+
+function saveHistory() {
+  localStorage.setItem("jarvis-chat", JSON.stringify(history.slice(-40)));
+}
+
+function addMessage(role, content) {
+  const bubble = document.createElement("div");
+  bubble.className = "msg " + (role === "user" ? "user" : "bot");
+
+  const label = document.createElement("div");
+  label.className = "who";
+  label.textContent = role === "user" ? "YOU" : "JARVIS";
+
+  const text = document.createElement("div");
+  text.textContent = content;
+
+  bubble.append(label, text);
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderHistory() {
+  chat.replaceChildren();
+  history.forEach(m => addMessage(m.role, m.content));
+  if (!history.length) {
+    addMessage("assistant",
+      "Hello! I am SUNAAD JARVIS. Ask me anything!");
+  }
+}
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.9;
+  utterance.pitch = 0.75;
+  utterance.lang = "en-IN";
+
+  const voices = speechSynthesis.getVoices();
+  const preferred = voices.find(v =>
+    /male|david|mark|daniel|alex/i.test(v.name)
+  );
+  if (preferred) utterance.voice = preferred;
+
+  speechSynthesis.speak(utterance);
+}
+
+async function sendMessage() {
+  const message = promptBox.value.trim();
+  if (!message || busy) return;
+
+  busy = true;
+  sendBtn.disabled = true;
+  promptBox.value = "";
+
+  history.push({ role: "user", content: message });
+  addMessage("user", message);
+  saveHistory();
+
+  statusBox.textContent = "JARVIS IS THINKING...";
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: history.slice(-20),
+        useWeb: document.getElementById("web").checked
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Request failed.");
+
+    const reply = data.reply || "I couldn't create a reply.";
+    history.push({ role: "assistant", content: reply });
+    saveHistory();
+    addMessage("assistant", reply);
+    statusBox.textContent = "SYSTEM ONLINE";
+    speak(reply);
+  } catch (error) {
+    addMessage("assistant", "Connection error: " + error.message);
+    statusBox.textContent = "CONNECTION ERROR";
+  } finally {
+    busy = false;
+    sendBtn.disabled = false;
+    promptBox.focus();
+  }
+}
+
+sendBtn.addEventListener("click", sendMessage);
+promptBox.addEventListener("keydown", event => {
+  if (event.key === "Enter") sendMessage();
+});
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  history = [];
+  saveHistory();
+  renderHistory();
+  speechSynthesis?.cancel();
+});
+
+document.getElementById("stopBtn").addEventListener("click", () => {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+});
+
+document.getElementById("voiceBtn").addEventListener("click", () => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    statusBox.textContent = "VOICE INPUT NOT AVAILABLE IN THIS BROWSER";
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-IN";
+  recognition.interimResults = false;
+
+  recognition.onstart = () => statusBox.textContent = "LISTENING...";
+  recognition.onresult = event => {
+    promptBox.value = event.results[0][0].transcript;
+    sendMessage();
+  };
+  recognition.onerror = () => statusBox.textContent = "VOICE ERROR";
+  recognition.onend = () => {
+    if (!busy) statusBox.textContent = "SYSTEM ONLINE";
+  };
+
+  recognition.start();
+});
+
+renderHistory();
+</script>
+</body>
+</html>
